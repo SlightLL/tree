@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圣诞树雪地效果</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #000, #001f3f);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #message {
+            position: absolute;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Arial', sans-serif;
+            font-size: 3rem;
+            color: white;
+            text-shadow: 0 0 10px white, 0 0 20px red, 0 0 30px green;
+        }
+    </style>
+</head>
+<body>
+    <div id="message">Merry Christmas</div>
+    <canvas id="treeCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("treeCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height * 0.7;
+        const treeHeight = canvas.height * 0.5;
+        const treeWidth = treeHeight * 0.5;
+
+        const particles = [];
+        const lights = [];
+        const snowflakes = [];
+        const snowGroundParticles = [];
+
+        // 创建雪花类
+        class Snowflake {
+            constructor(x, y, size, speed) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = speed;
+            }
+
+            update() {
+                this.y += this.speed;
+                this.x += Math.sin(this.y / 50) * 0.5; // 轻微漂移效果
+                if (this.y > canvas.height) {
+                    this.y = -this.size;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = "white";
+                ctx.fill();
+            }
+        }
+
+        // 创建粒子类（模拟圣诞树枝叶）
+        class Particle {
+            constructor(x, y, size, color, glow) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.color = color;
+                this.glow = glow;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = this.glow;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+            }
+        }
+
+        // 创建灯光类
+        class Light {
+            constructor(x, y, size, color) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.color = color;
+                this.alpha = Math.random(); // 透明度随机变化
+            }
+
+            update() {
+                this.alpha += Math.random() * 0.04 - 0.02; // 闪烁效果
+                if (this.alpha > 1) this.alpha = 1;
+                if (this.alpha < 0.5) this.alpha = 0.5;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.alpha})`;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = `rgba(${this.color.r}, ${this.color.g}, ${this.color.b}, ${this.alpha})`;
+                ctx.fill();
+            }
+        }
+
+        // 初始化粒子（圣诞树形状）
+        function createTreeParticles() {
+            for (let i = 0; i < 800; i++) {
+                const x = centerX + (Math.random() - 0.5) * treeWidth * (1 - i / 800);
+                const y = centerY - (treeHeight * i) / 800;
+                const size = Math.random() * 3 + 1;
+                const color = `rgba(34, 139, 34, ${Math.random() * 0.5 + 0.5})`; // 树叶绿色
+                particles.push(new Particle(x, y, size, color, 5));
+            }
+        }
+
+        // 初始化灯光
+        function createLights() {
+            for (let i = 0; i < 100; i++) {
+                const x = centerX + (Math.random() - 0.5) * treeWidth * Math.random();
+                const y = centerY - Math.random() * treeHeight;
+                const size = Math.random() * 5 + 3;
+                const color = {
+                    r: Math.floor(Math.random() * 255),
+                    g: Math.floor(Math.random() * 255),
+                    b: Math.floor(Math.random() * 255),
+                };
+                lights.push(new Light(x, y, size, color));
+            }
+        }
+
+        // 初始化雪花
+        function createSnowflakes() {
+            for (let i = 0; i < 200; i++) {
+                snowflakes.push(
+                    new Snowflake(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        Math.random() * 3 + 1,
+                        Math.random() * 1 + 0.5
+                    )
+                );
+            }
+        }
+
+        // 初始化地面的雪粒子
+        function createSnowGround() {
+            for (let i = 0; i < 500; i++) {
+                const x = Math.random() * canvas.width;
+                const y = centerY + Math.random() * 100;
+                const size = Math.random() * 2 + 1;
+                snowGroundParticles.push(new Particle(x, y, size, "white", 5));
+            }
+        }
+
+        // 绘制地面
+        function drawGround() {
+            // 渐变雪地
+            const gradient = ctx.createLinearGradient(0, centerY, 0, canvas.height);
+            gradient.addColorStop(0, "rgba(255, 255, 255, 0.7)");
+            gradient.addColorStop(1, "rgba(240, 240, 255, 1)");
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, centerY, canvas.width, canvas.height);
+
+            // 闪亮的雪粒
+            snowGroundParticles.forEach((particle) => particle.draw());
+        }
+
+        // 绘制树干
+        function drawTreeTrunk() {
+            const trunkWidth = treeWidth * 0.2;
+            const trunkHeight = treeHeight * 0.15;
+
+            ctx.fillStyle = "#8B4513";
+            ctx.fillRect(
+                centerX - trunkWidth / 2,
+                centerY,
+                trunkWidth,
+                trunkHeight
+            );
+        }
+
+        // 动画函数
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制雪花
+            snowflakes.forEach((snowflake) => {
+                snowflake.update();
+                snowflake.draw();
+            });
+
+            // 绘制地面
+            drawGround();
+
+            // 绘制树干
+            drawTreeTrunk();
+
+            // 绘制圣诞树
+            particles.forEach((particle) => {
+                particle.draw();
+            });
+
+            // 绘制灯光
+            lights.forEach((light) => {
+                light.update();
+                light.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // 初始化
+        createTreeParticles();
+        createLights();
+        createSnowflakes();
+        createSnowGround();
+        animate();
+
+        // 窗口大小调整
+        window.addEventListener("resize", () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+</body>
+</html>
+
